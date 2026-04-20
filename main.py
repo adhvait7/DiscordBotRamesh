@@ -7,11 +7,12 @@ load_dotenv()
 
 def log_expense(amount, category, notes="", user_id=None):
     conn = psycopg2.connect(
-        host=os.getenv('DB_HOST'),
-        database=os.getenv('DB_NAME'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD')
-    )
+                host=os.getenv('DB_HOST'),
+                database=os.getenv('DB_NAME'),
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD'),
+                sslmode='require'
+            )
     cursor=conn.cursor()
     cursor.execute(
         "INSERT INTO expenses (amount, category, notes, user_id) VALUES (%s, %s, %s, %s)",
@@ -32,10 +33,11 @@ class Client(discord.Client):
             await message.channel.send(f'hola {message.author.mention} :)')
         elif message.content == '!clear':
             conn = psycopg2.connect(
-                host = os.getenv('DB_HOST'),
-                database = os.getenv('DB_NAME'),
-                user = os.getenv('DB_USER'),
-                password = os.getenv('DB_PASSWORD')
+                host=os.getenv('DB_HOST'),
+                database=os.getenv('DB_NAME'),
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD'),
+                sslmode='require'
             )
             cursor = conn.cursor()
             cursor.execute("DELETE FROM expenses WHERE user_id = %s", (str(message.author.id),))
@@ -65,7 +67,8 @@ class Client(discord.Client):
                 host=os.getenv('DB_HOST'),
                 database=os.getenv('DB_NAME'),
                 user=os.getenv('DB_USER'),
-                password=os.getenv('DB_PASSWORD')
+                password=os.getenv('DB_PASSWORD'),
+                sslmode='require'
             )
             cursor = conn.cursor()
             cursor.execute("SELECT id, amount, category, notes, date FROM expenses WHERE user_id = %s ORDER BY date DESC LIMIT 10",

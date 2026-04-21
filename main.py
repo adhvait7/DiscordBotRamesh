@@ -71,7 +71,7 @@ class Client(discord.Client):
                 sslmode='require'
             )
             cursor = conn.cursor()
-            cursor.execute("SELECT id, amount, category, notes, date FROM expenses WHERE user_id = %s ORDER BY date DESC LIMIT 10",
+            cursor.execute("SELECT id, amount, category, notes, date FROM expenses WHERE user_id = %s ORDER BY date ASC",
             (str(message.author.id),))
             rows = cursor.fetchall()
             cursor.close()

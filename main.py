@@ -3,6 +3,7 @@ import os
 import psycopg2
 from datetime import datetime
 from dotenv import load_dotenv
+import io
 
 load_dotenv()
 
@@ -136,6 +137,9 @@ class Client(discord.Client):
                     )
                     rows = cursor.fetchall()
 
+            if not rows:
+                await message.channel.send("No expenses logged yet.")
+                return
             table = "```\n"
             table += "S.No │ Amount  │ Category   │ Notes           │ Date\n"
             table += "─" * 70 + "\n"
@@ -159,7 +163,8 @@ class Client(discord.Client):
                 remaining = budget - monthly_total
                 table += f"\n📊 Monthly budget: ₹{budget:.2f} | Spent this month: ₹{monthly_total:.2f} | Remaining: ₹{remaining:.2f} ({percent_used:.0f}% used)"
 
-            await message.channel.send(table)
+            for i in range(0, len(table), 1900):
+                await message.channel.send(table[i:i+1900])
 
         # !summary — spend by category this month
         elif content == '!summary':
@@ -203,16 +208,58 @@ class Client(discord.Client):
 
         # !help — show all commands
         elif content == '!help':
-            help_text = """```
-!t <amount> <category> [notes]  → Log an expense
-!view                            → View all expenses
-!summary                         → Monthly spend by category
-!budget <amount>                 → Set monthly budget
-!clear                           → Clear all your expenses
-!help                            → Show this message
-```"""
+            help_text = (
+                "```\n"
+                "EXPENSE BOT - COMMANDS\n"
+                "──────────────────────────────────────────────────\n"
+                "LOGGING\n"
+                "  !t <amount> <category> [notes]\n"
+                "  Examples:\n"
+                "    !t 50 upi\n"
+                "    !t 120 food groceries\n"
+                "    !t 999 shopping new shoes\n"
+                "\n"
+                "VIEWING\n"
+                "  !view       → All your expenses as a table\n"
+                "  !summary    → This month's spend by category\n"
+                "  !export     → Download all expenses as a CSV\n"
+                "\n"
+                "BUDGET\n"
+                "  !budget <amount>  → Set your monthly budget\n"
+                "  Example: !budget 5000\n"
+                "\n"
+                "OTHER\n"
+                "  !clear      → Delete all your expenses\n"
+                "  !help       → Show this message\n"
+                "──────────────────────────────────────────────────\n"
+                "TIP: Categories can be anything — food, upi,\n"
+                "rent, fun, travel, etc.\n"
+                "```"
+            )
             await message.channel.send(help_text)
+        elif content == '!export':
+            with get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT amount, category, notes, date FROM expenses WHERE user_id = %s ORDER BY date ASC",
+                        (uid,)
+                    )
+                    rows = cursor.fetchall()
 
+            if not rows:
+                await message.channel.send("No expenses to export.")
+                return
+
+            lines = ["amount,category,notes,date"]
+            for amount, category, notes, date in rows:
+                notes_clean = (notes or "").replace(",", ";")
+                lines.append(f"{amount},{category},{notes_clean},{date.strftime('%Y-%m-%d %H:%M')}")
+
+            csv_bytes = "\n".join(lines).encode("utf-8")
+            await message.channel.send(
+                "📎 Here's your expense data:",
+                file=discord.File(io.BytesIO(csv_bytes), filename="expenses.csv")
+            )
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 

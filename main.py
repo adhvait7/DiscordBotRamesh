@@ -66,22 +66,21 @@ def set_budget(user_id, amount):
                 """,
                 (user_id, amount)
             )
-def get_roast(spending_summary):
+def get_financial_opinion(spending_summary):
     try:
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         chat_completion = client.chat.completions.create(
             messages=[
                 {
                     "role": "user",
-                    "content": f"You are a savage but funny financial advisor. Roast this person's spending habits brutally but humorously in 3-4 sentences. Here is their monthly spending by category: {spending_summary}"
+                    "content": f"You are a professional financial advisor. Given this person's monthly spending by category: {spending_summary} — give a brief summary of their spending pattern and an honest assessment of whether it looks healthy or not. Keep it concise, clear, and practical. No fluff."
                 }
             ],
-            model="llama-3.1-8b-instant"
-
+            model="llama-3.1-8b-instant",
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
-        return f"Roast failed: {e}"
+        return f"Analysis failed: {e}"
 # ── Bot ───────────────────────────────────────────────────────────────────────
 
 class Client(discord.Client):
@@ -219,7 +218,7 @@ class Client(discord.Client):
                 await message.channel.send(f'✓ Monthly budget set to ₹{amount:.2f}')
             except ValueError:
                 await message.channel.send("Format: `!budget 5000`")
-        elif content == '!roast':
+        elif content == '!groq':
             with get_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
@@ -240,8 +239,8 @@ class Client(discord.Client):
                 return
 
             summary = ", ".join([f"₹{total:.0f} on {category}" for category, total in rows])
-            roast = get_roast(summary)
-            await message.channel.send(f"🔥 **Your financial roast:**\n{roast}")
+            opinion = get_financial_opinion(summary)
+            await message.channel.send(f"📊 **Financial Opinion:**\n{opinion}")
         # !help — show all commands
         elif content == '!help':
             help_text = (

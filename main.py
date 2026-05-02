@@ -29,16 +29,11 @@ def log_expense(amount, category, notes="", user_id=None):
             )
 
 
-def get_monthly_total(user_id):
+def get_cycle_total(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute(
-                """
-                SELECT COALESCE(SUM(amount), 0)
-                FROM expenses
-                WHERE user_id = %s
-                  AND DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW())
-                """,
+                "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = %s",
                 (user_id,)
             )
             return float(cursor.fetchone()[0])
@@ -123,17 +118,17 @@ class Client(discord.Client):
 
                 # Budget check
                 budget = get_budget(uid)
-                monthly_total = get_monthly_total(uid)
+                cycle_total = get_cycle_total(uid)
                 response = f'✓ Logged ₹{amount} ({category})'
 
                 if budget:
-                    remaining = budget - monthly_total
-                    percent_used = (monthly_total / budget) * 100
+                    remaining = budget - cycle_total
+                    percent_used = (cycle_total / budget) * 100
 
-                    if monthly_total > budget:
-                        response += f'\n⚠️ **Budget exceeded!** You\'ve spent ₹{monthly_total:.2f} of your ₹{budget:.2f} budget (over by ₹{abs(remaining):.2f})'
+                    if cycle_total > budget:
+                        response += f'\n⚠️ **Budget exceeded!** You\'ve spent ₹{cycle_total:.2f} of your ₹{budget:.2f} budget (over by ₹{abs(remaining):.2f})'
                     elif percent_used >= 80:
-                        response += f'\n🔶 **Warning:** {percent_used:.0f}% of monthly budget used (₹{remaining:.2f} left)'
+                        response += f'\n🔶 **Warning:** {percent_used:.0f}% of cycle budget used (₹{remaining:.2f} left)'
 
                 await message.channel.send(response)
 
@@ -171,15 +166,15 @@ class Client(discord.Client):
             # Append budget status if set
             budget = get_budget(uid)
             if budget:
-                monthly_total = get_monthly_total(uid)
-                percent_used = (monthly_total / budget) * 100
-                remaining = budget - monthly_total
-                table += f"\n📊 Monthly budget: ₹{budget:.2f} | Spent this month: ₹{monthly_total:.2f} | Remaining: ₹{remaining:.2f} ({percent_used:.0f}% used)"
+                cycle_total = get_cycle_total(uid)
+                percent_used = (cycle_total / budget) * 100
+                remaining = budget - cycle_total
+                table += f"\n📊 Budget: ₹{budget:.2f} | Spent this cycle: ₹{cycle_total:.2f} | Remaining: ₹{remaining:.2f} ({percent_used:.0f}% used)"
 
             for i in range(0, len(table), 1900):
                 await message.channel.send(table[i:i+1900])
 
-        # !summary — spend by category this month
+        # !summary — spend by category this cycle
         elif content == '!summary':
             with get_connection() as conn:
                 with conn.cursor() as cursor:
@@ -196,7 +191,7 @@ class Client(discord.Client):
                     rows = cursor.fetchall()
 
             if not rows:
-                await message.channel.send("No expenses this month yet.")
+                await message.channel.send("No expenses this logged yet.")
                 return
 
             table = "```\n"
@@ -214,7 +209,7 @@ class Client(discord.Client):
             try:
                 amount = float(content[8:])
                 set_budget(uid, amount)
-                await message.channel.send(f'✓ Monthly budget set to ₹{amount:.2f}')
+                await message.channel.send(f'✓ Budget set to ₹{amount:.2f}')
             except ValueError:
                 await message.channel.send("Format: `!budget 5000`")
         elif content == '!groq':
@@ -233,7 +228,7 @@ class Client(discord.Client):
                     rows = cursor.fetchall()
 
             if not rows:
-                await message.channel.send("No expenses this month — nothing to roast yet 💸")
+                await message.channel.send("No expenses logged yet, nothing to analyze yet")
                 return
 
             summary = ", ".join([f"₹{total:.0f} on {category}" for category, total in rows])
@@ -254,14 +249,15 @@ class Client(discord.Client):
                 "\n"
                 "VIEWING\n"
                 "  !view       → All your expenses as a table\n"
-                "  !summary    → This month's spend by category\n"
+                "  !summary    → Spend by category this cycle\n"
                 "  !export     → Download all expenses as a CSV\n"
                 "\n"
                 "BUDGET\n"
-                "  !budget <amount>  → Set your monthly budget\n"
+                "  !budget <amount>  → Set your billing cycle budget\n"
                 "  Example: !budget 5000\n"
                 "\n"
                 "OTHER\n"
+                "  !groq       → AI analysis of your spending pattern\n"
                 "  !clear      → Delete all your expenses\n"
                 "  !help       → Show this message\n"
                 "──────────────────────────────────────────────────\n"

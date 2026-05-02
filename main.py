@@ -73,7 +73,7 @@ def get_financial_opinion(spending_summary):
             messages=[
                 {
                     "role": "user",
-                    "content": f"You are a financial advisor speaking to a young IT professional in India, freshly employed and earning around 3 LPA (roughly ₹25,000/month take-home). Here is their spending by category: {spending_summary}. Reference the actual numbers and categories. Briefly summarize where most money is going, assess whether the pattern is healthy given their income, and flag anything that looks disproportionate. Be honest, grounded, and practical — no generic advice."
+                    "content": f"You are a professional financial advisor. A user has shared their spending by category: {spending_summary}. Reference the actual rupee amounts and category names in your response. Briefly summarize where the majority of spending is concentrated, then give an honest assessment of whether the pattern looks balanced or not. Flag any category that appears disproportionately high. Keep it concise, specific, and practical."
                 }
             ],
             model="llama-3.1-8b-instant",

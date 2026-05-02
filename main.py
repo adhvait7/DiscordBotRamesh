@@ -188,7 +188,6 @@ class Client(discord.Client):
                         SELECT category, SUM(amount) as total
                         FROM expenses
                         WHERE user_id = %s
-                          AND DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW())
                         GROUP BY category
                         ORDER BY total DESC
                         """,

@@ -67,17 +67,21 @@ def set_budget(user_id, amount):
                 (user_id, amount)
             )
 def get_roast(spending_summary):
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": f"You are a savage but funny financial advisor. Roast this person's spending habits brutally but humorously in 3-4 sentences. Here is their monthly spending by category: {spending_summary}"
-            }
-        ],
-        model="llama3-8b-8192",
-    )
-    return chat_completion.choices[0].message.content
+    try:
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"You are a savage but funny financial advisor. Roast this person's spending habits brutally but humorously in 3-4 sentences. Here is their monthly spending by category: {spending_summary}"
+                }
+            ],
+            model="llama-3.1-8b-instant"
+
+        )
+        return chat_completion.choices[0].message.content
+    except Exception as e:
+        return f"Roast failed: {e}"
 # ── Bot ───────────────────────────────────────────────────────────────────────
 
 class Client(discord.Client):

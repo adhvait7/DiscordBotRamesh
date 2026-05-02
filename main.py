@@ -4,7 +4,7 @@ import psycopg2
 from datetime import datetime
 from dotenv import load_dotenv
 import io
-
+from groq import Groq
 load_dotenv()
 
 
@@ -66,8 +66,18 @@ def set_budget(user_id, amount):
                 """,
                 (user_id, amount)
             )
-
-
+def get_roast(spending_summary):
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": f"You are a savage but funny financial advisor. Roast this person's spending habits brutally but humorously in 3-4 sentences. Here is their monthly spending by category: {spending_summary}"
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    return chat_completion.choices[0].message.content
 # ── Bot ───────────────────────────────────────────────────────────────────────
 
 class Client(discord.Client):
@@ -205,7 +215,29 @@ class Client(discord.Client):
                 await message.channel.send(f'✓ Monthly budget set to ₹{amount:.2f}')
             except ValueError:
                 await message.channel.send("Format: `!budget 5000`")
+        elif content == '!roast':
+            with get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT category, SUM(amount) as total
+                        FROM expenses
+                        WHERE user_id = %s
+                          AND DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW())
+                        GROUP BY category
+                        ORDER BY total DESC
+                        """,
+                        (uid,)
+                    )
+                    rows = cursor.fetchall()
 
+            if not rows:
+                await message.channel.send("No expenses this month — nothing to roast yet 💸")
+                return
+
+            summary = ", ".join([f"₹{total:.0f} on {category}" for category, total in rows])
+            roast = get_roast(summary)
+            await message.channel.send(f"🔥 **Your financial roast:**\n{roast}")
         # !help — show all commands
         elif content == '!help':
             help_text = (
